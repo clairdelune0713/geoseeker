@@ -28,7 +28,7 @@ export default function CompassFeedback({ distance, bearing }: CompassFeedbackPr
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className="relative w-16 h-16 rounded-full border-4 border-slate-200 bg-slate-50 shadow-inner flex items-center justify-center">
+      <div className="relative w-16 h-16 rounded-full border-4 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 shadow-inner flex items-center justify-center">
         <div 
           className="absolute text-red-500 transition-transform duration-75 ease-linear z-10"
           style={{ transform: `rotate(${rotation}deg)` }}
@@ -36,14 +36,14 @@ export default function CompassFeedback({ distance, bearing }: CompassFeedbackPr
           <ArrowUp className="w-8 h-8" strokeWidth={3} />
         </div>
         {/* Compass markings */}
-        <div className="absolute top-1 text-[8px] font-bold text-slate-400">N</div>
-        <div className="absolute bottom-1 text-[8px] font-bold text-slate-400">S</div>
-        <div className="absolute right-1 text-[8px] font-bold text-slate-400">E</div>
-        <div className="absolute left-1 text-[8px] font-bold text-slate-400">W</div>
+        <div className="absolute top-1 text-[8px] font-bold text-slate-400 dark:text-slate-500">N</div>
+        <div className="absolute bottom-1 text-[8px] font-bold text-slate-400 dark:text-slate-500">S</div>
+        <div className="absolute right-1 text-[8px] font-bold text-slate-400 dark:text-slate-500">E</div>
+        <div className="absolute left-1 text-[8px] font-bold text-slate-400 dark:text-slate-500">W</div>
       </div>
       <div className="text-center">
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Signal Strength</p>
-        <p className="font-mono font-bold text-slate-800 text-lg">
+        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Signal Strength</p>
+        <p className="font-mono font-bold text-slate-800 dark:text-slate-100 text-lg">
           <span className="text-blue-600">{Math.round(distance).toLocaleString()}</span> km
         </p>
       </div>

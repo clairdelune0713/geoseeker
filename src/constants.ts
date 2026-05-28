@@ -25,6 +25,13 @@ export const ZONES = {
     center: { lat: 45, lng: -100 }, 
     zoom: 3 
   },
+  hong_kong: {
+    id: 'hong_kong',
+    name: 'Hong Kong',
+    bounds: { north: 22.57, south: 22.15, west: 113.82, east: 114.43 },
+    center: { lat: 22.3193, lng: 114.1694 },
+    zoom: 11
+  },
   landmarks: {
     id: 'landmarks',
     name: 'Major Cities (Global)',

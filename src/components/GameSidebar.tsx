@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
-import { Users, Trophy, MapPin, Loader2, RefreshCw, Eye, Target, Compass, Globe } from 'lucide-react';
+import { Trophy, MapPin, RefreshCw, Eye, Target, Compass, Globe, Moon, Sun } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Player } from '../types';
 import StreetView from './StreetView';
@@ -22,7 +22,12 @@ function generateName() {
 
 const EMOJIS = ['🙈', '🥶', '🔥', '🏃💨', '👀', '🤫'];
 
-export default function GameSidebar() {
+interface GameSidebarProps {
+  isDarkMode: boolean;
+  onToggleDarkMode: () => void;
+}
+
+export default function GameSidebar({ isDarkMode, onToggleDarkMode }: GameSidebarProps) {
   const { gameState, playerId, joinGame, startGame, resetGame, setZone, sendReaction } = useGame();
   const [hasJoined, setHasJoined] = useState(false);
 
@@ -49,16 +54,29 @@ export default function GameSidebar() {
   const showStreetView = gameState?.hiderLocation && (gameState.status === 'seeking' || gameState.status === 'finished');
 
   return (
-    <div className="h-full flex flex-col bg-slate-50 border-r border-slate-200">
+    <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 transition-colors">
       {/* Header */}
-      <div className="p-6 border-b border-slate-200/60 bg-white">
-        <h1 className="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center gap-2 font-display">
-          <MapPin className="text-blue-600 w-8 h-8" />
-          GeoSeeker
-        </h1>
-        <p className="text-sm text-slate-500 mt-2 font-medium">
-          Round {gameState?.round || 1}
-        </p>
+      <div className="p-6 border-b border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center gap-2 font-display">
+              <MapPin className="text-blue-600 w-8 h-8" />
+              GeoSeeker
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 font-medium">
+              Round {gameState?.round || 1}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onToggleDarkMode}
+            aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={isDarkMode ? 'Light mode' : 'Dark mode'}
+            className="w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center justify-center"
+          >
+            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Game Status Banner */}
@@ -120,7 +138,7 @@ export default function GameSidebar() {
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-50/50">
+      <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-50/50 dark:bg-slate-950">
 
         {/* Join Form */}
         {!hasJoined && (
@@ -128,10 +146,10 @@ export default function GameSidebar() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             onSubmit={handleJoin}
-            className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/60"
+            className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800"
           >
-            <h3 className="font-bold text-slate-900 mb-2 font-display text-xl">Play vs Gemini AI</h3>
-            <p className="text-sm text-slate-500 mb-6">You will be the Seeker. Find where Gemini is hiding!</p>
+            <h3 className="font-bold text-slate-900 dark:text-white mb-2 font-display text-xl">Play vs Gemini AI</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">You will be the Seeker. Find where Gemini is hiding!</p>
             <div className="space-y-5">
               <button
                 type="submit"
@@ -146,15 +164,15 @@ export default function GameSidebar() {
 
         {/* Player Role Card */}
         {hasJoined && (
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Your Role</p>
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm">
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Your Role</p>
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-blue-100 text-blue-600">
+              <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-500/15 text-blue-600 dark:text-blue-300">
                 <Target className="w-6 h-6" />
               </div>
               <div className="flex-1">
-                <p className="font-bold text-slate-900 text-lg">Seeker</p>
-                <p className="text-sm text-slate-500">
+                <p className="font-bold text-slate-900 dark:text-white text-lg">Seeker</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   Find where the hider is!
                 </p>
               </div>
@@ -169,15 +187,15 @@ export default function GameSidebar() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4"
           >
-            <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
-              <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                <Globe className="w-4 h-4 text-slate-400" />
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
+                <Globe className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                 Select Game Zone
               </label>
               <select
                 value={gameState.zoneId || 'global'}
                 onChange={(e) => setZone(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 font-medium text-slate-700"
+                className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 dark:bg-slate-800 font-medium text-slate-700 dark:text-slate-100"
               >
                 {Object.values(ZONES).map(zone => (
                   <option key={zone.id} value={zone.id}>{zone.name}</option>
@@ -187,7 +205,7 @@ export default function GameSidebar() {
 
             <button
               onClick={startGame}
-              className="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-bold py-4 rounded-2xl shadow-lg shadow-zinc-900/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-lg"
+              className="w-full bg-zinc-900 hover:bg-zinc-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-zinc-900/20 dark:shadow-blue-950/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-lg"
             >
               <Target className="w-6 h-6" />
               Start Game
@@ -200,9 +218,9 @@ export default function GameSidebar() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"
+            className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm"
           >
-            <h3 className="font-bold text-slate-900 mb-3 flex items-center gap-2">
+            <h3 className="font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
               <Compass className="w-4 h-4 text-blue-500" />
               Hider's Location
             </h3>
@@ -214,18 +232,18 @@ export default function GameSidebar() {
       </div>
 
       {/* Footer Actions */}
-      <div className="p-6 border-t border-slate-200 bg-white">
+      <div className="p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
         {gameState?.status === 'finished' && (
           <button
             onClick={resetGame}
-            className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl transition"
+            className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-medium py-3 rounded-xl transition"
           >
             <RefreshCw className="w-4 h-4" />
             Next Round
           </button>
         )}
         {gameState?.status !== 'finished' && (
-          <div className="text-center text-xs text-slate-400">
+          <div className="text-center text-xs text-slate-400 dark:text-slate-500">
             Waiting for round to end...
           </div>
         )}

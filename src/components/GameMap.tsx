@@ -12,8 +12,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import CompassFeedback from './CompassFeedback';
 import { Player } from '../types';
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-
 function getPulseColor(distance: number) {
   if (distance < 50) return 'rgba(239, 68, 68, 0.6)'; // Red
   if (distance < 500) return 'rgba(249, 115, 22, 0.6)'; // Orange
@@ -32,7 +30,7 @@ export default function GameMap() {
     // Global handler for Google Maps auth failures
     // This catches ApiNotActivatedMapError, InvalidKeyMapError, etc.
     (window as any).gm_authFailure = () => {
-      setMapError("Google Maps API error detected. Please ensure your API Key is valid and the 'Maps JavaScript API' is enabled in your Google Cloud Console.");
+      setMapError("Google Maps rejected the API key. Please use a valid Google Maps browser key in VITE_GOOGLE_MAPS_API_KEY and make sure Maps JavaScript API is enabled for that key's project.");
     };
 
     return () => {
@@ -65,29 +63,29 @@ export default function GameMap() {
 
   if (mapError) {
     return (
-      <div className="flex items-center justify-center h-full bg-slate-100 p-8">
-        <div className="bg-white p-6 rounded-xl shadow-lg max-w-md text-center border-l-4 border-red-500">
+      <div className="flex items-center justify-center h-full bg-slate-100 dark:bg-slate-950 p-8">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-lg max-w-md text-center border-l-4 border-red-500 dark:border-red-400">
           <div className="flex justify-center mb-4">
-            <div className="p-3 bg-red-100 rounded-full">
-              <EyeOff className="w-8 h-8 text-red-600" />
+            <div className="p-3 bg-red-100 dark:bg-red-500/15 rounded-full">
+              <EyeOff className="w-8 h-8 text-red-600 dark:text-red-300" />
             </div>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Maps API Not Activated</h2>
-          <p className="text-slate-600 mb-4">
-            The Google Maps API is not enabled for your project.
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Maps API Key Rejected</h2>
+          <p className="text-slate-600 dark:text-slate-300 mb-4">
+            {mapError}
           </p>
-          <div className="text-left text-sm bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <p className="font-semibold mb-2">How to fix:</p>
-            <ol className="list-decimal list-inside space-y-1 text-slate-700">
-              <li>Go to the <a href="https://console.cloud.google.com/google/maps-apis/api-list" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Google Cloud Console</a>.</li>
-              <li>Select your project.</li>
-              <li>Find <strong>"Maps JavaScript API"</strong> in the library.</li>
-              <li>Click <strong>"Enable"</strong>.</li>
+          <div className="text-left text-sm bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+            <p className="font-semibold mb-2 text-slate-900 dark:text-white">How to fix:</p>
+            <ol className="list-decimal list-inside space-y-1 text-slate-700 dark:text-slate-300">
+              <li>Create or select a Google Maps API key in the <a href="https://console.cloud.google.com/google/maps-apis/credentials" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Google Cloud Console</a>.</li>
+              <li>Set it in <strong>VITE_GOOGLE_MAPS_API_KEY</strong> in your .env file.</li>
+              <li>Enable <strong>Maps JavaScript API</strong> for the same project.</li>
+              <li>Check that browser referrer restrictions include localhost.</li>
             </ol>
           </div>
           <button 
             onClick={() => window.location.reload()}
-            className="mt-6 px-6 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition"
+            className="mt-6 px-6 py-2 bg-slate-900 dark:bg-blue-600 text-white rounded-lg hover:bg-slate-800 dark:hover:bg-blue-500 transition"
           >
             I've Enabled It, Reload
           </button>
@@ -123,7 +121,7 @@ export default function GameMap() {
     (gameState?.status === 'seeking' && (!currentPlayer?.guesses || currentPlayer.guesses.length < 3));
 
   return (
-    <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-xl border border-slate-200">
+    <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-xl border border-slate-200 dark:border-slate-800 bg-slate-900">
         <Map
           style={{ width: '100%', height: '100%' }}
           defaultCenter={currentZone.center}
@@ -208,14 +206,14 @@ export default function GameMap() {
 
       {/* Last Guess Feedback Overlay */}
       {lastGuessResult && gameState?.status === 'seeking' && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm px-6 py-4 rounded-2xl shadow-lg border border-slate-200 z-10 animate-in fade-in slide-in-from-top-4">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-6 py-4 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 z-10 animate-in fade-in slide-in-from-top-4">
           <CompassFeedback distance={lastGuessResult.distance} bearing={lastGuessResult.bearing} />
         </div>
       )}
 
       {/* Gemini Chat Overlay */}
       {geminiMessages.length > 0 && (
-        <div className="absolute bottom-8 left-8 w-80 max-h-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200 z-10 flex flex-col overflow-hidden pointer-events-auto">
+        <div className="absolute bottom-8 left-8 w-80 max-h-64 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-10 flex flex-col overflow-hidden pointer-events-auto">
           <div className="bg-blue-600 px-4 py-3 flex items-center gap-2 text-white shadow-sm">
             <Sparkles className="w-4 h-4" />
             <span className="font-semibold text-sm">Gemini AI</span>
@@ -226,7 +224,7 @@ export default function GameMap() {
                 key={msg.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`p-3 rounded-xl text-sm ${msg.type === 'hint' ? 'bg-amber-50 border border-amber-100 text-amber-900' : 'bg-slate-50 border border-slate-200 text-slate-800'}`}
+                className={`p-3 rounded-xl text-sm ${msg.type === 'hint' ? 'bg-amber-50 dark:bg-amber-500/15 border border-amber-100 dark:border-amber-400/20 text-amber-900 dark:text-amber-100' : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100'}`}
               >
                 <div className="text-[10px] font-bold uppercase tracking-wider mb-1 opacity-60">
                   {msg.type === 'hint' ? 'Hint' : 'Reasoning'}

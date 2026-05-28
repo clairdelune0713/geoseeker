@@ -8,46 +8,23 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { GameProvider } from './context/GameContext';
 import GameMap from './components/GameMap';
 import GameSidebar from './components/GameSidebar';
 import { APIProvider } from '@vis.gl/react-google-maps';
 
 export default function App() {
-  const [apiKey, setApiKey] = useState<string>('');
-  const [isKeyLoaded, setIsKeyLoaded] = useState(false);
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('geoseeker_theme') === 'dark');
 
   useEffect(() => {
-    const storedKey = localStorage.getItem('google_maps_api_key');
-    const envKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    
-    if (storedKey) {
-      setApiKey(storedKey);
-    } else if (envKey) {
-      setApiKey(envKey);
-    }
-    setIsKeyLoaded(true);
-  }, []);
-
-  const handleSaveKey = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const key = formData.get('apiKey') as string;
-    if (key.trim()) {
-      localStorage.setItem('google_maps_api_key', key.trim());
-      setApiKey(key.trim());
-    }
-  };
-
-  if (!isKeyLoaded) {
-    return null;
-  }
+    localStorage.setItem('geoseeker_theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
 
   if (!apiKey) {
     return (
       <div className="flex items-center justify-center min-h-screen w-screen bg-slate-900 p-8 relative overflow-hidden">
-        {/* Decorative Background Elements */}
         <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-blue-600/30 rounded-full mix-blend-screen filter blur-[100px] animate-pulse"></div>
         <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-emerald-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
         
@@ -60,38 +37,13 @@ export default function App() {
           </div>
           
           <p className="text-slate-300 mb-8 leading-relaxed">
-            Welcome to the ultimate global hide-and-seek. To start playing, please provide your Google Maps API Key.
+            Google Maps is not configured. Add a Google Maps API key to your .env file, then restart the dev server.
           </p>
-          
-          <form onSubmit={handleSaveKey} className="space-y-5">
-            <div>
-              <label htmlFor="apiKey" className="block text-sm font-medium text-slate-300 mb-2">
-                API Key
-              </label>
-              <input
-                type="text"
-                id="apiKey"
-                name="apiKey"
-                required
-                className="w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-600 text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                placeholder="AIzaSy..."
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/20 active:scale-[0.98]"
-            >
-              Save & Play
-            </button>
-          </form>
-          
+
           <div className="mt-8 text-sm text-slate-400 bg-slate-800/50 p-5 rounded-xl border border-slate-700/50">
-            <p className="font-semibold text-slate-300 mb-3">How to get a key:</p>
-            <ol className="list-decimal list-inside space-y-2">
-              <li>Go to the <a href="https://console.cloud.google.com/google/maps-apis/api-list" target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline transition-colors">Google Cloud Console</a>.</li>
-              <li>Enable "Maps JavaScript API" and "Street View Static API".</li>
-              <li>Create credentials to get an API key.</li>
-            </ol>
+            <p className="font-semibold text-slate-300 mb-3">Expected env variable:</p>
+            <code className="block text-slate-300">VITE_GOOGLE_MAPS_API_KEY</code>
+            <p className="mt-3">The app also accepts GOOGLE_MAPS_API_KEY as a fallback.</p>
           </div>
         </div>
       </div>
@@ -99,23 +51,22 @@ export default function App() {
   }
 
   return (
-    <GameProvider>
-      <APIProvider apiKey={apiKey}>
-        <div className="flex h-screen w-screen bg-slate-50 overflow-hidden">
-          {/* Sidebar */}
-          <div className="w-[400px] h-full flex-shrink-0 z-20 shadow-2xl shadow-slate-300/50 bg-white">
-            <GameSidebar />
-          </div>
+    <div className={isDarkMode ? 'dark' : ''}>
+      <GameProvider>
+        <APIProvider apiKey={apiKey}>
+          <div className="flex h-screen w-screen bg-slate-50 dark:bg-slate-950 overflow-hidden transition-colors">
+            <div className="w-[400px] h-full flex-shrink-0 z-20 shadow-2xl shadow-slate-300/50 dark:shadow-black/40 bg-white dark:bg-slate-950">
+              <GameSidebar isDarkMode={isDarkMode} onToggleDarkMode={() => setIsDarkMode(value => !value)} />
+            </div>
 
-          {/* Main Map Area */}
-          <div className="flex-1 h-full relative p-4 bg-slate-100/50">
-            <div className="w-full h-full rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 bg-white relative">
-              <GameMap />
+            <div className="flex-1 h-full relative p-4 bg-slate-100/50 dark:bg-slate-950">
+              <div className="w-full h-full rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 relative">
+                <GameMap />
+              </div>
             </div>
           </div>
-        </div>
-      </APIProvider>
-    </GameProvider>
+        </APIProvider>
+      </GameProvider>
+    </div>
   );
 }
-
