@@ -54,13 +54,13 @@ export default function App() {
     <div className={isDarkMode ? 'dark' : ''}>
       <GameProvider>
         <APIProvider apiKey={apiKey}>
-          <div className="flex h-screen w-screen bg-slate-50 dark:bg-slate-950 overflow-hidden transition-colors">
-            <div className="w-[400px] h-full flex-shrink-0 z-20 shadow-2xl shadow-slate-300/50 dark:shadow-black/40 bg-white dark:bg-slate-950">
+          <div className="flex h-screen w-screen bg-slate-100 dark:bg-slate-950 overflow-hidden transition-colors">
+            <div className="w-[392px] h-full flex-shrink-0 z-20 shadow-xl shadow-slate-300/40 dark:shadow-black/40 bg-white dark:bg-slate-950">
               <GameSidebar isDarkMode={isDarkMode} onToggleDarkMode={() => setIsDarkMode(value => !value)} />
             </div>
 
-            <div className="flex-1 h-full relative p-4 bg-slate-100/50 dark:bg-slate-950">
-              <div className="w-full h-full rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 relative">
+            <div className="flex-1 h-full relative p-3 bg-slate-100 dark:bg-slate-950">
+              <div className="w-full h-full rounded-lg overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 relative">
                 <GameMap />
               </div>
             </div>

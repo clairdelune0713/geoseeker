@@ -64,9 +64,9 @@ export default function GameMap() {
   if (mapError) {
     return (
       <div className="flex items-center justify-center h-full bg-slate-100 dark:bg-slate-950 p-8">
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-lg max-w-md text-center border-l-4 border-red-500 dark:border-red-400">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg max-w-md text-center border-l-4 border-red-500 dark:border-red-400">
           <div className="flex justify-center mb-4">
-            <div className="p-3 bg-red-100 dark:bg-red-500/15 rounded-full">
+            <div className="p-3 bg-red-100 dark:bg-red-500/15 rounded-lg">
               <EyeOff className="w-8 h-8 text-red-600 dark:text-red-300" />
             </div>
           </div>
@@ -121,7 +121,7 @@ export default function GameMap() {
     (gameState?.status === 'seeking' && (!currentPlayer?.guesses || currentPlayer.guesses.length < 3));
 
   return (
-    <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-xl border border-slate-200 dark:border-slate-800 bg-slate-900">
+    <div className="relative w-full h-full rounded-lg overflow-hidden shadow-xl border border-slate-200 dark:border-slate-800 bg-slate-900">
         <Map
           style={{ width: '100%', height: '100%' }}
           defaultCenter={currentZone.center}
@@ -196,7 +196,7 @@ export default function GameMap() {
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10">
           <button
             onClick={handleConfirmAction}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-full shadow-lg transform transition hover:scale-105 flex items-center gap-2"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-7 rounded-lg shadow-lg transform transition hover:scale-105 flex items-center gap-2"
           >
             <Navigation className="w-5 h-5" />
             Confirm Guess
@@ -206,14 +206,14 @@ export default function GameMap() {
 
       {/* Last Guess Feedback Overlay */}
       {lastGuessResult && gameState?.status === 'seeking' && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-6 py-4 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 z-10 animate-in fade-in slide-in-from-top-4">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-6 py-4 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-10 animate-in fade-in slide-in-from-top-4">
           <CompassFeedback distance={lastGuessResult.distance} bearing={lastGuessResult.bearing} />
         </div>
       )}
 
       {/* Gemini Chat Overlay */}
       {geminiMessages.length > 0 && (
-        <div className="absolute bottom-8 left-8 w-80 max-h-64 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-10 flex flex-col overflow-hidden pointer-events-auto">
+        <div className="absolute bottom-6 left-6 w-80 max-h-64 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-lg shadow-2xl border border-slate-200 dark:border-slate-700 z-10 flex flex-col overflow-hidden pointer-events-auto">
           <div className="bg-blue-600 px-4 py-3 flex items-center gap-2 text-white shadow-sm">
             <Sparkles className="w-4 h-4" />
             <span className="font-semibold text-sm">Gemini AI</span>
@@ -224,7 +224,7 @@ export default function GameMap() {
                 key={msg.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`p-3 rounded-xl text-sm ${msg.type === 'hint' ? 'bg-amber-50 dark:bg-amber-500/15 border border-amber-100 dark:border-amber-400/20 text-amber-900 dark:text-amber-100' : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100'}`}
+                className={`p-3 rounded-lg text-sm ${msg.type === 'hint' ? 'bg-amber-50 dark:bg-amber-500/15 border border-amber-100 dark:border-amber-400/20 text-amber-900 dark:text-amber-100' : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100'}`}
               >
                 <div className="text-[10px] font-bold uppercase tracking-wider mb-1 opacity-60">
                   {msg.type === 'hint' ? 'Hint' : 'Reasoning'}

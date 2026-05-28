@@ -52,7 +52,7 @@ export default function StreetView({ location }: StreetViewProps) {
 
   if (hasStreetView === false) {
     return (
-      <div className="w-full h-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-inner bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 p-4 text-center">
+      <div className="w-full h-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shadow-inner bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 p-4 text-center">
         <EyeOff className="w-8 h-8 mb-2 opacity-50" />
         <p className="text-sm font-medium">No Street View available near this location.</p>
       </div>
@@ -60,7 +60,7 @@ export default function StreetView({ location }: StreetViewProps) {
   }
 
   return (
-    <div className="w-full h-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-inner relative bg-slate-100 dark:bg-slate-800">
+    <div className="w-full h-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shadow-inner relative bg-slate-100 dark:bg-slate-800">
       <div ref={containerRef} className="w-full h-full" />
       {hasStreetView === null && (
         <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
