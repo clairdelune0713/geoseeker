@@ -4,19 +4,20 @@
 */
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { ZONES } from "../constants";
+import { ZONES, PLACES_BY_ZONE } from "../constants";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function geminiHide(zoneId: string): Promise<{ lat: number; lng: number; message: string }> {
   const zone = ZONES[zoneId as keyof typeof ZONES] || ZONES.global;
-  const bounds = zone.bounds;
-  
-  let prompt = `You are playing a game of GeoGuesser/Hide and Seek. You need to pick a hiding spot within the following zone: ${zone.name}.`;
-  if (bounds) {
-    prompt += ` The bounds are roughly: North ${bounds.north}, South ${bounds.south}, East ${bounds.east}, West ${bounds.west}.`;
-  }
-  prompt += ` Pick a random, interesting location (like a landmark, a park, or a street) within this area. Return ONLY a JSON object with 'lat', 'lng', and 'message' properties. The 'message' should be a cryptic but playful and cheeky hint about where you are hiding. Have fun with it!`;
+
+  // Randomly pick a well-known place from the curated list for this zone
+  const places = PLACES_BY_ZONE[zoneId] || PLACES_BY_ZONE.global;
+  const place = places[Math.floor(Math.random() * places.length)];
+
+  // Ask Gemini for a playful hint message about the chosen location
+  let prompt = `You are playing a game of GeoGuesser/Hide and Seek. You have hidden yourself at latitude ${place.lat.toFixed(4)}, longitude ${place.lng.toFixed(4)} in the zone: ${zone.name}.`;
+  prompt += ` Write a cryptic but playful and cheeky hint about where you are hiding. Do not give away the exact coordinates. Have fun with it!`;
 
   try {
     const response = await ai.models.generateContent({
@@ -27,26 +28,23 @@ export async function geminiHide(zoneId: string): Promise<{ lat: number; lng: nu
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            lat: { type: Type.NUMBER },
-            lng: { type: Type.NUMBER },
             message: { type: Type.STRING }
           },
-          required: ["lat", "lng", "message"]
+          required: ["message"]
         }
       }
     });
-    
+
     const text = response.text;
     if (text) {
       const data = JSON.parse(text);
-      return { lat: data.lat, lng: data.lng, message: data.message || "I'm hiding somewhere in this zone! Come find me!" };
+      return { lat: place.lat, lng: place.lng, message: data.message || "I'm hiding somewhere in this zone! Come find me!" };
     }
   } catch (error) {
-    console.error("Error getting hiding spot from Gemini:", error);
+    console.error("Error getting hint from Gemini:", error);
   }
-  
-  // Fallback to center of zone if Gemini fails
-  return { ...zone.center, message: "I'm hiding somewhere in this zone! Come find me!" };
+
+  return { lat: place.lat, lng: place.lng, message: "I'm hiding somewhere in this zone! Come find me!" };
 }
 
 export async function geminiProvideHint(zoneId: string, hiderLocation: {lat: number, lng: number}, previousGuesses: {lat: number, lng: number, distance: number, bearing: number}[]): Promise<string> {
