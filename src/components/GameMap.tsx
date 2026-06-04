@@ -4,9 +4,9 @@
 */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Map, MapMouseEvent, Marker, AdvancedMarker, Pin, useMap } from '@vis.gl/react-google-maps';
+import { Map, MapMouseEvent, AdvancedMarker, Pin, useMap } from '@vis.gl/react-google-maps';
 import { useGame } from '../context/GameContext';
-import { Target, MapPin, Navigation, Eye, EyeOff, MessageSquare, Sparkles } from 'lucide-react';
+import { Target, MapPin, Navigation, EyeOff, MessageSquare, Sparkles } from 'lucide-react';
 import { ZONES } from '../constants';
 import { motion, AnimatePresence } from 'motion/react';
 import CompassFeedback from './CompassFeedback';
@@ -20,15 +20,15 @@ function getPulseColor(distance: number) {
 }
 
 export default function GameMap() {
-  const { gameState, playerId, makeGuess, lastGuessResult, reactions, geminiMessages } = useGame();
+  const { gameState, playerId, makeGuess, lastGuessResult, reactions, geminiMessages, askGemini, isAskingGemini } = useGame();
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [questionText, setQuestionText] = useState('');
   const [mapError, setMapError] = useState<string | null>(null);
   const map = useMap();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Global handler for Google Maps auth failures
-    // This catches ApiNotActivatedMapError, InvalidKeyMapError, etc.
     (window as any).gm_authFailure = () => {
       setMapError("Google Maps rejected the API key. Please use a valid Google Maps browser key in VITE_GOOGLE_MAPS_API_KEY and make sure Maps JavaScript API is enabled for that key's project.");
     };
@@ -43,7 +43,7 @@ export default function GameMap() {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [geminiMessages]);
+  }, [geminiMessages, isAskingGemini]);
 
   // Reset selected location when game state changes significantly
   useEffect(() => {
@@ -116,6 +116,13 @@ export default function GameMap() {
     }
   };
 
+  const handleAskQuestion = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!questionText.trim()) return;
+    askGemini(questionText.trim());
+    setQuestionText('');
+  };
+
   const currentPlayer = gameState?.players[playerId || ''];
   const canInteract = 
     (gameState?.status === 'seeking' && (!currentPlayer?.guesses || currentPlayer.guesses.length < 3));
@@ -139,14 +146,13 @@ export default function GameMap() {
             </AdvancedMarker>
           )}
 
-          {/* Show guesses for the current player (or all guesses if game is finished) */}
-          {(Object.values(gameState?.players || {}) as Player[]).map(player => {
+          {/* Regular Gameplay Mode: Show guesses for the current player (or all guesses if game is finished) */}
+          {gameState?.status !== 'match_complete' && (Object.values(gameState?.players || {}) as Player[]).map(player => {
             if (player.id !== playerId && gameState?.status !== 'finished') return null; // Only show own guesses unless game over
             
             return (player.guesses || []).map((guess, idx) => (
               <AdvancedMarker key={`${player.id}-guess-${idx}`} position={guess}>
                 <div className="relative group flex items-center justify-center">
-                  {/* Pulse Effect */}
                   <div 
                     className="absolute w-12 h-12 rounded-full animate-ping"
                     style={{ backgroundColor: getPulseColor(guess.distance) }}
@@ -154,22 +160,59 @@ export default function GameMap() {
                   <Pin background={'#EF4444'} borderColor={'#7F1D1D'} glyphColor={'white'} scale={0.8} />
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                     <div className="font-bold">{player.name}</div>
-                    {Math.round(guess.distance)} km
+                    <div>{Math.round(guess.distance)} km away</div>
+                    <div className="text-yellow-400 font-bold">{guess.points} pts</div>
                   </div>
                 </div>
               </AdvancedMarker>
             ));
           })}
 
-          {/* Show actual hider location ONLY if game is finished */}
+          {/* Regular Gameplay Mode: Show actual hider location ONLY if round is finished */}
           {gameState?.status === 'finished' && gameState.hiderLocation && (
             <AdvancedMarker position={gameState.hiderLocation}>
-              <div className="animate-bounce">
+              <div className="animate-bounce flex flex-col items-center">
                 <Pin background={'#10B981'} borderColor={'#064E3B'} glyphColor={'white'} scale={1.2}>
                   <Target className="text-white w-4 h-4" />
                 </Pin>
+                <div className="bg-emerald-900 text-white text-xs font-extrabold px-2 py-1 rounded shadow-md mt-1 whitespace-nowrap z-20">
+                  {gameState.hiderLocation.name}
+                </div>
               </div>
             </AdvancedMarker>
+          )}
+
+          {/* Match Complete Mode: Show all targets and all guesses from match history */}
+          {gameState?.status === 'match_complete' && gameState.roundHistory && (
+            <>
+              {gameState.roundHistory.map((round, rIdx) => (
+                <React.Fragment key={`history-round-${rIdx}`}>
+                  {/* Round Target Landmark */}
+                  <AdvancedMarker position={round.targetLocation}>
+                    <div className="flex flex-col items-center z-10">
+                      <Pin background={'#10B981'} borderColor={'#064E3B'} glyphColor={'white'} scale={1.1}>
+                        <Target className="text-white w-4 h-4" />
+                      </Pin>
+                      <div className="bg-emerald-950 text-white text-[10px] px-2 py-0.5 rounded shadow mt-1 whitespace-nowrap font-bold border border-emerald-500/30">
+                        R{round.roundNumber}: {round.targetName.split(',')[0]}
+                      </div>
+                    </div>
+                  </AdvancedMarker>
+
+                  {/* Round's Guesses */}
+                  {round.guesses.map((guess, gIdx) => (
+                    <AdvancedMarker key={`history-guess-${rIdx}-${gIdx}`} position={guess}>
+                      <div className="relative group flex flex-col items-center">
+                        <Pin background={'#4F46E5'} borderColor={'#312E81'} glyphColor={'white'} scale={0.7} />
+                        <div className="bg-indigo-950 text-indigo-200 text-[9px] px-1.5 py-0.5 rounded shadow mt-0.5 whitespace-nowrap font-bold font-mono border border-indigo-500/30">
+                          R{round.roundNumber} G{gIdx + 1} ({round.bestPoints} pts)
+                        </div>
+                      </div>
+                    </AdvancedMarker>
+                  ))}
+                </React.Fragment>
+              ))}
+            </>
           )}
         </Map>
 
@@ -211,29 +254,90 @@ export default function GameMap() {
         </div>
       )}
 
-      {/* Gemini Chat Overlay */}
-      {geminiMessages.length > 0 && (
-        <div className="absolute bottom-6 left-6 w-80 max-h-64 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-lg shadow-2xl border border-slate-200 dark:border-slate-700 z-10 flex flex-col overflow-hidden pointer-events-auto">
-          <div className="bg-blue-600 px-4 py-3 flex items-center gap-2 text-white shadow-sm">
-            <Sparkles className="w-4 h-4" />
+      {/* Gemini Chat Overlay & Ask Question Input */}
+      {geminiMessages.length > 0 && gameState?.status !== 'match_complete' && (
+        <div className="absolute bottom-6 left-6 w-80 h-80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-lg shadow-2xl border border-slate-200 dark:border-slate-700 z-10 flex flex-col overflow-hidden pointer-events-auto transition-all">
+          <div className="bg-blue-600 px-4 py-3 flex items-center gap-2 text-white shadow-sm flex-shrink-0">
+            <Sparkles className="w-4 h-4 animate-pulse" />
             <span className="font-semibold text-sm">Gemini AI</span>
           </div>
+          
+          {/* Chat Bubble Stream */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {geminiMessages.map((msg, i) => (
+            {geminiMessages.map((msg, i) => {
+              let bubbleClass = '';
+              let title = '';
+              
+              if (msg.type === 'hint') {
+                bubbleClass = 'bg-amber-50 dark:bg-amber-500/15 border border-amber-100 dark:border-amber-400/20 text-amber-900 dark:text-amber-100';
+                title = 'Hint';
+              } else if (msg.type === 'reasoning') {
+                bubbleClass = 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100';
+                title = 'Reasoning';
+              } else if (msg.type === 'question') {
+                bubbleClass = 'bg-blue-500 text-white border border-blue-600 rounded-br-none ml-8 shadow-sm';
+                title = `${currentPlayer?.name || 'You'}`;
+              } else if (msg.type === 'answer') {
+                bubbleClass = 'bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-100 dark:border-indigo-400/20 text-indigo-900 dark:text-indigo-100 rounded-bl-none mr-8';
+                title = 'Gemini Answer';
+              }
+
+              return (
+                <motion.div 
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`p-3 rounded-xl text-xs ${bubbleClass}`}
+                >
+                  <div className={`text-[9px] font-black uppercase tracking-wider mb-1 opacity-60 ${msg.type === 'question' ? 'text-blue-100' : ''}`}>
+                    {title}
+                  </div>
+                  <p className="leading-relaxed whitespace-pre-line font-medium">{msg.text}</p>
+                </motion.div>
+              );
+            })}
+            
+            {isAskingGemini && (
               <motion.div 
-                key={msg.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`p-3 rounded-lg text-sm ${msg.type === 'hint' ? 'bg-amber-50 dark:bg-amber-500/15 border border-amber-100 dark:border-amber-400/20 text-amber-900 dark:text-amber-100' : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100'}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="p-3 rounded-xl text-xs bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-100 dark:border-indigo-400/20 text-indigo-900 dark:text-indigo-100 mr-8 flex items-center gap-2"
               >
-                <div className="text-[10px] font-bold uppercase tracking-wider mb-1 opacity-60">
-                  {msg.type === 'hint' ? 'Hint' : 'Reasoning'}
+                <div className="flex gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
-                {msg.text}
+                <span className="text-[10px] font-semibold text-slate-400">Gemini is typing...</span>
               </motion.div>
-            ))}
+            )}
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Bottom Custom Question Input */}
+          {gameState?.status === 'seeking' && (
+            <form onSubmit={handleAskQuestion} className="p-2 border-t border-slate-200 dark:border-slate-800 flex gap-2 bg-slate-50 dark:bg-slate-900/40 flex-shrink-0">
+              <input
+                type="text"
+                value={questionText}
+                onChange={(e) => setQuestionText(e.target.value)}
+                disabled={isAskingGemini}
+                placeholder="Ask Gemini a question... (-250 pts)"
+                className="flex-1 px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 font-semibold"
+              />
+              <button
+                type="submit"
+                disabled={isAskingGemini || !questionText.trim()}
+                className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition disabled:opacity-50 flex items-center justify-center"
+              >
+                {isAskingGemini ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <MessageSquare className="w-4 h-4" />
+                )}
+              </button>
+            </form>
+          )}
         </div>
       )}
     </div>

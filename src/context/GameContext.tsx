@@ -4,13 +4,14 @@
 */
 
 import { useEffect, useState, createContext, useContext, ReactNode } from 'react';
-import { GameState, Reaction, Player } from '../types';
-import { geminiHide, geminiProvideHint } from '../services/geminiService';
+import { GameState, Reaction, Player, RoundResult, QuestionAsked } from '../types';
+import { geminiHide, geminiProvideHint, geminiAnswerQuestion } from '../services/geminiService';
+import { ZONES } from '../constants';
 
 export interface GeminiMessage {
   id: string;
   text: string;
-  type: 'hint' | 'reasoning';
+  type: 'hint' | 'reasoning' | 'question' | 'answer';
 }
 
 interface GameContextType {
@@ -23,9 +24,11 @@ interface GameContextType {
   sendReaction: (emoji: string) => void;
   makeGuess: (location: { lat: number; lng: number }) => void;
   resetGame: () => void;
-  lastGuessResult: { distance: number; location: { lat: number; lng: number }; bearing: number } | null;
+  lastGuessResult: { distance: number; location: { lat: number; lng: number }; bearing: number; points: number } | null;
   reactions: Reaction[];
   geminiMessages: GeminiMessage[];
+  askGemini: (question: string) => Promise<void>;
+  isAskingGemini: boolean;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -58,13 +61,21 @@ function getBearing(lat1: number, lon1: number, lat2: number, lon2: number) {
   return (brng * 180 / Math.PI + 360) % 360;
 }
 
+// Helper: Calculate GeoGuessr Points
+function calculatePoints(distance: number, decayScale: number): number {
+  if (distance < 0.05) return 5000; // Perfect within 50m
+  const score = Math.round(5000 * Math.exp(-distance / decayScale));
+  return Math.max(0, Math.min(5000, score));
+}
+
 export function GameProvider({ children }: { children: ReactNode }) {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [lastGuessResult, setLastGuessResult] = useState<{ distance: number; location: { lat: number; lng: number }; bearing: number } | null>(null);
+  const [lastGuessResult, setLastGuessResult] = useState<{ distance: number; location: { lat: number; lng: number }; bearing: number; points: number } | null>(null);
   const [reactions, setReactions] = useState<Reaction[]>([]);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [geminiMessages, setGeminiMessages] = useState<GeminiMessage[]>([]);
+  const [isAskingGemini, setIsAskingGemini] = useState(false);
 
   useEffect(() => {
     let storedId = sessionStorage.getItem('geoseeker_player_id');
@@ -85,7 +96,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       name: name || `Player ${playerId.substr(0, 4)}`,
       role: 'seeker',
       guesses: [],
-      score: Infinity,
+      score: 0, // start with 0 points
     };
 
     const geminiPlayer: Player = {
@@ -93,7 +104,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       name: 'Gemini AI',
       role: 'hider',
       guesses: [],
-      score: Infinity,
+      score: 0,
     };
 
     setGameState({
@@ -106,7 +117,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
         [geminiId]: geminiPlayer
       },
       round: 1,
-      zoneId: 'global'
+      maxRounds: 5,
+      zoneId: 'global',
+      roundHistory: [],
+      lastRoundWon: null,
+      questionsAsked: []
     });
     
     setGeminiMessages([]);
@@ -124,7 +139,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const result = await geminiHide(gameState.zoneId);
     setGameState(prev => prev ? {
       ...prev,
-      hiderLocation: { lat: result.lat, lng: result.lng },
+      hiderLocation: { lat: result.lat, lng: result.lng, name: result.name },
       status: 'seeking'
     } : null);
     setGeminiMessages([{ id: Date.now().toString(), text: result.message, type: 'hint' }]);
@@ -176,43 +191,165 @@ export function GameProvider({ children }: { children: ReactNode }) {
       gameState.hiderLocation.lng
     );
 
-    const newGuess = { ...location, distance };
-    const newScore = Math.min(player.score ?? Infinity, distance);
+    const zone = ZONES[gameState.zoneId as keyof typeof ZONES] || ZONES.global;
+    const winThreshold = zone.winThresholdKm;
+    const decayScale = zone.decayScale;
+
+    const points = calculatePoints(distance, decayScale);
+    const newGuess = { ...location, distance, points };
     const newGuesses = [...(player.guesses || []), newGuess];
+
+    const isWin = distance <= winThreshold;
+    const isRoundOver = isWin || newGuesses.length >= 3;
+
+    const bestRoundPoints = Math.max(...newGuesses.map(g => g.points));
 
     setGameState(prev => {
       if (!prev) return null;
       
       let newStatus = prev.status;
-      if (distance < 0.05 || newGuesses.length >= 3) {
+      let newRoundHistory = [...prev.roundHistory];
+      let newPlayers = { ...prev.players };
+      let lastRoundWon = prev.lastRoundWon;
+
+      if (isRoundOver) {
         newStatus = 'finished';
+        lastRoundWon = isWin;
+        
+        const roundResult: RoundResult = {
+          roundNumber: prev.round,
+          targetName: prev.hiderLocation?.name || 'Unknown Landmark',
+          targetLocation: { lat: prev.hiderLocation!.lat, lng: prev.hiderLocation!.lng },
+          guesses: newGuesses,
+          won: isWin,
+          bestDistance: Math.min(...newGuesses.map(g => g.distance)),
+          bestPoints: bestRoundPoints
+        };
+        newRoundHistory.push(roundResult);
+        
+        newPlayers[playerId] = {
+          ...player,
+          guesses: newGuesses,
+          score: player.score + bestRoundPoints
+        };
+      } else {
+        newPlayers[playerId] = {
+          ...player,
+          guesses: newGuesses
+        };
       }
       
       return {
         ...prev,
         status: newStatus,
-        players: {
-          ...prev.players,
-          [playerId]: {
-            ...player,
-            guesses: newGuesses,
-            score: newScore
-          }
-        }
+        players: newPlayers,
+        roundHistory: newRoundHistory,
+        lastRoundWon
       };
     });
 
-    setLastGuessResult({ distance, location, bearing });
+    setLastGuessResult({ distance, location, bearing, points });
     
     // Provide hint if game is not finished
-    if (distance >= 0.05 && newGuesses.length < 3) {
+    if (!isWin && newGuesses.length < 3) {
       const hint = await geminiProvideHint(gameState.zoneId, gameState.hiderLocation, newGuesses);
       setGeminiMessages(prev => [...prev, { id: Date.now().toString(), text: hint, type: 'hint' }]);
     }
   };
 
+  const askGemini = async (question: string) => {
+    if (!gameState || !playerId || gameState.status !== 'seeking') return;
+    if (!gameState.hiderLocation) return;
+
+    const player = gameState.players[playerId];
+    if (!player) return;
+
+    // Deduct 250 points, but make sure they don't go below 0
+    const cost = 250;
+    const newScore = Math.max(0, player.score - cost);
+
+    const questionId = 'q_' + Date.now();
+    setGeminiMessages(prev => [...prev, { id: questionId, text: question, type: 'question' }]);
+    setIsAskingGemini(true);
+
+    try {
+      const prevQuestions = gameState.questionsAsked.map(q => ({ question: q.question, answer: q.answer }));
+      const answer = await geminiAnswerQuestion(gameState.zoneId, gameState.hiderLocation, question, prevQuestions);
+
+      const answerId = 'a_' + Date.now();
+      setGeminiMessages(prev => [...prev, { id: answerId, text: answer, type: 'answer' }]);
+
+      const newQuestion: QuestionAsked = {
+        id: questionId,
+        question,
+        answer,
+        timestamp: Date.now()
+      };
+
+      setGameState(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          players: {
+            ...prev.players,
+            [playerId]: {
+              ...player,
+              score: newScore
+            }
+          },
+          questionsAsked: [...prev.questionsAsked, newQuestion]
+        };
+      });
+    } catch (error) {
+      console.error("Error asking Gemini:", error);
+    } finally {
+      setIsAskingGemini(false);
+    }
+  };
+
   const resetGame = async () => {
     if (!gameState) return;
+
+    if (gameState.status === 'match_complete') {
+      // PLAY AGAIN
+      const playerIds = Object.keys(gameState.players);
+      const nextHiderId = 'gemini_ai';
+      
+      setGameState(prev => {
+        if (!prev) return null;
+        
+        const newPlayers = { ...prev.players };
+        playerIds.forEach(id => {
+          newPlayers[id] = {
+            ...newPlayers[id],
+            role: id === nextHiderId ? 'hider' : 'seeker',
+            guesses: [],
+            score: 0
+          };
+        });
+
+        return {
+          ...prev,
+          status: 'waiting',
+          hiderLocation: null,
+          round: 1,
+          maxRounds: 5,
+          hiderId: nextHiderId,
+          players: newPlayers,
+          roundHistory: [],
+          lastRoundWon: null,
+          questionsAsked: []
+        };
+      });
+      setLastGuessResult(null);
+      setGeminiMessages([]);
+      return;
+    }
+
+    if (gameState.round >= gameState.maxRounds) {
+      setGameState(prev => prev ? { ...prev, status: 'match_complete' } : null);
+      return;
+    }
 
     const playerIds = Object.keys(gameState.players);
     const nextHiderId = 'gemini_ai'; // Gemini is always the hider
@@ -226,7 +363,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           ...newPlayers[id],
           role: id === nextHiderId ? 'hider' : 'seeker',
           guesses: [],
-          score: Infinity
+          // score is accumulated, so keep it!
         };
       });
 
@@ -236,11 +373,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
         hiderLocation: null,
         round: prev.round + 1,
         hiderId: nextHiderId,
-        players: newPlayers
+        players: newPlayers,
+        questionsAsked: []
       };
     });
     
     setLastGuessResult(null);
+    setGeminiMessages([]);
   };
 
   return (
@@ -256,7 +395,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       resetGame,
       lastGuessResult,
       reactions,
-      geminiMessages
+      geminiMessages,
+      askGemini,
+      isAskingGemini
     }}>
       {children}
     </GameContext.Provider>

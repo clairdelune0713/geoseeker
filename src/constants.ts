@@ -9,35 +9,45 @@ export const ZONES = {
     name: 'Global (Anywhere)', 
     bounds: null, 
     center: { lat: 20, lng: 0 }, 
-    zoom: 2 
+    zoom: 2,
+    winThresholdKm: 150,
+    decayScale: 2000
   },
   europe: { 
     id: 'europe', 
     name: 'Europe Only', 
     bounds: { north: 71.5, south: 35.0, west: -25.0, east: 40.0 }, 
     center: { lat: 50, lng: 10 }, 
-    zoom: 4 
+    zoom: 4,
+    winThresholdKm: 50,
+    decayScale: 500
   },
   north_america: { 
     id: 'north_america', 
     name: 'North America', 
     bounds: { north: 83.0, south: 15.0, west: -168.0, east: -52.0 }, 
     center: { lat: 45, lng: -100 }, 
-    zoom: 3 
+    zoom: 3,
+    winThresholdKm: 80,
+    decayScale: 1000
   },
   hong_kong: {
     id: 'hong_kong',
     name: 'Hong Kong',
     bounds: { north: 22.57, south: 22.15, west: 113.82, east: 114.43 },
     center: { lat: 22.3193, lng: 114.1694 },
-    zoom: 11
+    zoom: 11,
+    winThresholdKm: 1.5,
+    decayScale: 5
   },
   landmarks: {
     id: 'landmarks',
     name: 'Major Cities (Global)',
     bounds: null,
     center: { lat: 20, lng: 0 },
-    zoom: 2
+    zoom: 2,
+    winThresholdKm: 10,
+    decayScale: 1500
   }
 };
 
