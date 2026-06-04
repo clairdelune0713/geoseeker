@@ -65,7 +65,7 @@ export default function GameSidebar({ isDarkMode, onToggleDarkMode }: GameSideba
               <span className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-600/25">
                 <MapPin className="w-5 h-5" />
               </span>
-              GeoSeeker
+              GeoDawg
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold uppercase tracking-wide">Round {gameState?.round || 1}</p>
           </div>
@@ -191,9 +191,9 @@ export default function GameSidebar({ isDarkMode, onToggleDarkMode }: GameSideba
                 <Target className="w-6 h-6" />
               </div>
               <div className="flex-1">
-                <p className="font-bold text-slate-900 dark:text-white text-lg">Seeker</p>
+                <p className="font-bold text-slate-900 dark:text-white text-lg">Goblin Catcher</p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Find where the hider is!
+                  Find where the goblin is hiding!
                 </p>
               </div>
             </div>
